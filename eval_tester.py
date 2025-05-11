@@ -17,7 +17,7 @@ from nltk.translate.bleu_score import corpus_bleu
 from evaluate import load
 import tensorflow as tf
 tf.config.set_visible_devices([], 'GPU')  # Hides GPUs from TensorFlow only
-
+import gc 
 
 # Download necessary NLTK data
 nltk.download('punkt')
@@ -33,7 +33,8 @@ with open("preprocessed_english.txt", "r", encoding="utf-8") as f:
 
 """
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device_0 = torch.device("cuda:0")
+device_1 = torch.device("cuda:1") 
 
 # First we load in the MarianMT model
 tokenizer_marianMT = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-nl-en")
@@ -47,9 +48,9 @@ Facebook_NLLB = AutoModelForSeq2SeqLM.from_pretrained("facebook/nllb-200-distill
 tokenizer_tower = AutoTokenizer.from_pretrained("Unbabel/TowerInstruct-7B-v0.2")
 TOWER = AutoModelForCausalLM.from_pretrained("Unbabel/TowerInstruct-7B-v0.2")
 
-MarianMT = MarianMT.to(device)
-Facebook_NLLB = Facebook_NLLB.to(device)
-TOWER = TOWER.to(device)
+MarianMT = MarianMT.to(device_0)
+Facebook_NLLB = Facebook_NLLB.to(device_0)
+TOWER = TOWER.to(device_1)
 
 models = {"marian": MarianMT, "nllb": Facebook_NLLB, "tower": TOWER}
 tokenizers = {"marian": tokenizer_marianMT, "nllb": tokenizer_facebook, "tower": tokenizer_tower}
@@ -79,35 +80,50 @@ def calculate_chrf(predictions, references):
 
 """# We then run zero-shot on the models for Dutch->English"""
 
-def perform_zero_shot(models, tokenizers, sentences):
-    results = {"marian": [], "nllb" : [], "tower": []}
-    for sentence in tqdm(sentences, desc="Zero-shot Translation"):
-        # MarianMT
-        inputs = tokenizers["marian"](sentence, return_tensors="pt", padding=True)
-        inputs = {key: value.to(device) for key, value in inputs.items()}
-        outputs = models["marian"].generate(**inputs)
-        results["marian"].append(tokenizers["marian"].decode(outputs[0], skip_special_tokens=True))
+def batchify(data, batch_size):
+    for i in range(0, len(data), batch_size):
+        yield data[i:i + batch_size]
 
 
-        # NLLB
-        tokenizers["nllb"].src_lang = "nld_Latn"
-        inputs = tokenizers["nllb"](sentence, return_tensors="pt", padding=True)
-        inputs = {key: value.to(device) for key, value in inputs.items()}
-        forced_bos_token_id = tokenizers["nllb"].convert_tokens_to_ids(">>eng_Latn<<")
-        outputs = models["nllb"].generate(**inputs, forced_bos_token_id=forced_bos_token_id)
-        results["nllb"].append(tokenizers["nllb"].decode(outputs[0], skip_special_tokens=True))
 
+def perform_zero_shot(models, tokenizers, sentences, batch_size=16):
+    results = {"marian": [], "nllb": [], "tower": []}
 
-        # TOWER
-        prompt = f"Translate from Dutch to English: {sentence}"
-        inputs = tokenizers["tower"](prompt, return_tensors="pt", padding=True)
-        inputs = {key: value.to(device) for key, value in inputs.items()}
-        outputs = models["tower"].generate(**inputs, max_new_tokens=100, pad_token_id=tokenizers["tower"].eos_token_id)
-        results["tower"].append(tokenizers["tower"].decode(outputs[0], skip_special_tokens=True).replace(prompt, "").strip())
+    with tqdm(total=len(sentences), desc="Zero-shot Translation", unit="sentences", dynamic_ncols=True) as pbar:
+        for batch in batchify(sentences, batch_size):
+            with torch.no_grad():  # Disable gradient tracking for inference
+                # Marian (batch)
+                marian_inputs = tokenizers["marian"](batch, return_tensors="pt", padding=True, truncation=True, max_length=512)
+                marian_inputs = {k: v.to(device_0) for k, v in marian_inputs.items()}
+                marian_outputs = models["marian"].generate(**marian_inputs)
+                results["marian"].extend(tokenizers["marian"].batch_decode(marian_outputs, skip_special_tokens=True))
 
+                # NLLB (batch)
+                tokenizers["nllb"].src_lang = "nld_Latn"
+                nllb_inputs = tokenizers["nllb"](batch, return_tensors="pt", padding=True, truncation=True, max_length=512)
+                nllb_inputs = {k: v.to(device_0) for k, v in nllb_inputs.items()}
+                bos_token_id = tokenizers["nllb"].convert_tokens_to_ids(">>eng_Latn<<")
+                nllb_outputs = models["nllb"].generate(**nllb_inputs, forced_bos_token_id=bos_token_id)
+                results["nllb"].extend(tokenizers["nllb"].batch_decode(nllb_outputs, skip_special_tokens=True))
+
+                # Tower (batch with prompts)
+                tower_prompts = [f"Translate from Dutch to English: {s}" for s in batch]
+                tower_inputs = tokenizers["tower"](tower_prompts, return_tensors="pt", padding=True, truncation=True, max_length=512)
+                tower_inputs = {k: v.to(device_1) for k, v in tower_inputs.items()}
+                tower_outputs = models["tower"].generate(**tower_inputs, max_new_tokens=70, pad_token_id=tokenizers["tower"].eos_token_id)
+                tower_decoded = tokenizers["tower"].batch_decode(tower_outputs, skip_special_tokens=True)
+                cleaned = [d.replace(p, "").strip() for d, p in zip(tower_decoded, tower_prompts)]
+                results["tower"].extend(cleaned)
+
+            # Update progress bar after each batch
+            pbar.update(batch_size)
+            
     return results
 
-sample_size = 10 # Reduced sample size for demonstration
+
+
+
+sample_size = 10000 # Reduced sample size for demonstration
 sample_dutch_sentences = dutch_sentences[:sample_size]
 sample_english_sentences = english_sentences[:sample_size]
 results = perform_zero_shot(models, tokenizers, sample_dutch_sentences)
@@ -130,34 +146,34 @@ tower_predictions = results['tower']
 bleu_marian = calculate_bleu(marian_predictions, [[ref] for ref in sample_english_sentences])
 bleu_nllb = calculate_bleu(nllb_predictions, [[ref] for ref in sample_english_sentences])
 bleu_tower = calculate_bleu(tower_predictions, [[ref] for ref in sample_english_sentences])
-print(f"\nBLEU:")
-print(f"- MarianMT: {bleu_marian}")
-print(f"- NLLB:     {bleu_nllb}")
-print(f"- Tower:    {bleu_tower}")
+print("\nBLEU Scores:")
+print(f"- MarianMT: {bleu_marian['bleu']:.3f}")
+print(f"- NLLB:     {bleu_nllb['bleu']:.3f}")
+print(f"- Tower:    {bleu_tower['bleu']:.3f}")
 
-# BLEURT
-bleurt_marian = calculate_bleurt(marian_predictions, sample_english_sentences)
-bleurt_nllb = calculate_bleurt(nllb_predictions, sample_english_sentences)
-bleurt_tower = calculate_bleurt(tower_predictions, sample_english_sentences)
-print(f"\nBLEURT:")
-print(f"- MarianMT: {bleurt_marian}")
-print(f"- NLLB:     {bleurt_nllb}")
-print(f"- Tower:    {bleurt_tower}")
+# BLEURT (average of scores)
+bleurt_marian = sum(calculate_bleurt(marian_predictions, sample_english_sentences)['scores'])/len(sample_english_sentences)
+bleurt_nllb = sum(calculate_bleurt(nllb_predictions, sample_english_sentences)['scores'])/len(sample_english_sentences)
+bleurt_tower = sum(calculate_bleurt(tower_predictions, sample_english_sentences)['scores'])/len(sample_english_sentences)
+print("\nBLEURT Scores (average):")
+print(f"- MarianMT: {bleurt_marian:.3f}")
+print(f"- NLLB:     {bleurt_nllb:.3f}")
+print(f"- Tower:    {bleurt_tower:.3f}")
 
 # COMET
-comet_marian = calculate_comet(marian_predictions, sample_english_sentences, sample_dutch_sentences)
-comet_nllb = calculate_comet(nllb_predictions, sample_english_sentences, sample_dutch_sentences)
-comet_tower = calculate_comet(tower_predictions, sample_english_sentences, sample_dutch_sentences)
-print(f"\nCOMET:")
-print(f"- MarianMT: {comet_marian}")
-print(f"- NLLB:     {comet_nllb}")
-print(f"- Tower:    {comet_tower}")
+comet_marian = calculate_comet(marian_predictions, sample_english_sentences, sample_dutch_sentences)['mean_score']
+comet_nllb = calculate_comet(nllb_predictions, sample_english_sentences, sample_dutch_sentences)['mean_score']
+comet_tower = calculate_comet(tower_predictions, sample_english_sentences, sample_dutch_sentences)['mean_score']
+print("\nCOMET Scores:")
+print(f"- MarianMT: {comet_marian:.3f}")
+print(f"- NLLB:     {comet_nllb:.3f}")
+print(f"- Tower:    {comet_tower:.3f}")
 
 # CHRF
-chrf_marian = calculate_chrf(marian_predictions, sample_english_sentences)
-chrf_nllb = calculate_chrf(nllb_predictions, sample_english_sentences)
-chrf_tower = calculate_chrf(tower_predictions, sample_english_sentences)
-print(f"\nCHRF:")
-print(f"- MarianMT: {chrf_marian}")
-print(f"- NLLB:     {chrf_nllb}")
-print(f"- Tower:    {chrf_tower}")
+chrf_marian = calculate_chrf(marian_predictions, sample_english_sentences)['score']
+chrf_nllb = calculate_chrf(nllb_predictions, sample_english_sentences)['score']
+chrf_tower = calculate_chrf(tower_predictions, sample_english_sentences)['score']
+print("\nCHRF Scores:")
+print(f"- MarianMT: {chrf_marian:.3f}")
+print(f"- NLLB:     {chrf_nllb:.3f}")
+print(f"- Tower:    {chrf_tower:.3f}")
