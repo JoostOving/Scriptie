@@ -14,10 +14,13 @@ import torch
 from tqdm import tqdm
 import nltk
 from nltk.translate.bleu_score import corpus_bleu
+import sacrebleu
+import evaluate
 from evaluate import load
 import tensorflow as tf
 tf.config.set_visible_devices([], 'GPU')  # Hides GPUs from TensorFlow only
 import gc 
+import re
 
 # Download necessary NLTK data
 nltk.download('punkt')
@@ -61,13 +64,14 @@ print(f"- TOWER: {TOWER.device}")
 
 """# We first define the evaluation metrics"""
 
-bleu = load("bleu")
+bleu = evaluate.load("sacrebleu")
 bleurt = load("bleurt", config_name="bleurt-tiny-128")
 comet = load("comet")
 chrf = load("chrf")
 
 def calculate_bleu(predictions, references):
-    return bleu.compute(predictions=predictions, references=references)
+    result = bleu.compute(predictions=predictions, references=references)
+    return result["score"]
 
 def calculate_bleurt(predictions, references):
     return bleurt.compute(predictions=predictions, references=references)
@@ -80,17 +84,27 @@ def calculate_chrf(predictions, references):
 
 """# We then run zero-shot on the models for Dutch->English"""
 
+def clean_tower_output(decoded, prompts):
+    cleaned = []
+    for text, prompt in zip(decoded, prompts):
+        stripped = text.replace(prompt, "").strip()
+        # Keep only the English sentence before it switches back to Dutch or another language
+        match = re.split(r"(?:\.\s+|Dutch:|Nederlands:|$)", stripped)[0]
+        cleaned.append(match.strip() + ".")  # Re-append period for fluency
+    return cleaned
+
 def batchify(data, batch_size):
     for i in range(0, len(data), batch_size):
         yield data[i:i + batch_size]
 
 
-
 def perform_zero_shot(models, tokenizers, sentences, batch_size=16):
     results = {"marian": [], "nllb": [], "tower": []}
+    tower_batch_size = 4  # Reduced batch size only for Tower
 
     with tqdm(total=len(sentences), desc="Zero-shot Translation", unit="sentences", dynamic_ncols=True) as pbar:
-        for batch in batchify(sentences, batch_size):
+        for i in range(0, len(sentences), batch_size):
+            batch = sentences[i:i + batch_size]
             with torch.no_grad():  # Disable gradient tracking for inference
                 # Marian (batch)
                 marian_inputs = tokenizers["marian"](batch, return_tensors="pt", padding=True, truncation=True, max_length=512)
@@ -106,32 +120,44 @@ def perform_zero_shot(models, tokenizers, sentences, batch_size=16):
                 nllb_outputs = models["nllb"].generate(**nllb_inputs, forced_bos_token_id=bos_token_id)
                 results["nllb"].extend(tokenizers["nllb"].batch_decode(nllb_outputs, skip_special_tokens=True))
 
-                # Tower (batch with prompts)
-                tower_prompts = [f"Translate from Dutch to English: {s}" for s in batch]
-                tower_inputs = tokenizers["tower"](tower_prompts, return_tensors="pt", padding=True, truncation=True, max_length=512)
-                tower_inputs = {k: v.to(device_1) for k, v in tower_inputs.items()}
-                tower_outputs = models["tower"].generate(**tower_inputs, max_new_tokens=70, pad_token_id=tokenizers["tower"].eos_token_id)
-                tower_decoded = tokenizers["tower"].batch_decode(tower_outputs, skip_special_tokens=True)
-                cleaned = [d.replace(p, "").strip() for d, p in zip(tower_decoded, tower_prompts)]
-                results["tower"].extend(cleaned)
+                del marian_inputs, marian_outputs
+                del nllb_inputs, nllb_outputs
 
-            # Update progress bar after each batch
-            pbar.update(batch_size)
-            
+                # Tower (processed in smaller sub-batches)
+                for j in range(0, len(batch), tower_batch_size):
+                    tower_sub_batch = batch[j:j + tower_batch_size]
+                    tower_prompts = [f"Translate the following from Dutch to English.\nDutch: {s}\nEnglish:" for s in tower_sub_batch]
+                    tower_inputs = tokenizers["tower"](tower_prompts, return_tensors="pt", padding=True, truncation=True, max_length=512)
+                    tower_inputs = {k: v.to(device_1) for k, v in tower_inputs.items()}
+                    tower_outputs = models["tower"].generate(**tower_inputs, max_new_tokens=70, pad_token_id=tokenizers["tower"].eos_token_id)
+                    tower_decoded = tokenizers["tower"].batch_decode(tower_outputs, skip_special_tokens=True)
+                    cleaned = clean_tower_output(tower_decoded, tower_prompts)
+                    results["tower"].extend(cleaned)
+
+                    # Clear Tower related tensors
+                    del tower_inputs, tower_outputs, tower_decoded, tower_prompts
+                    torch.cuda.empty_cache()
+
+            # Update progress bar
+            pbar.update(len(batch))
+            torch.cuda.empty_cache()
+
     return results
 
 
 
-
-sample_size = 10000 # Reduced sample size for demonstration
+sample_size = 5000 # Reduced sample size for demonstration
 sample_dutch_sentences = dutch_sentences[:sample_size]
 sample_english_sentences = english_sentences[:sample_size]
 results = perform_zero_shot(models, tokenizers, sample_dutch_sentences)
+
+
 
 print("\n--- Sample Translations ---")
 for i, sentence in enumerate(sample_dutch_sentences):
     print(f"\n?? Sentence {i+1}")
     print(f"?? Dutch:    {sentence}")
+    print(f"?? Reference:  {sample_english_sentences[i]}")
     print(f"?? Marian:   {results['marian'][i]}")
     print(f"?? NLLB:     {results['nllb'][i]}")
     print(f"?? Tower:    {results['tower'][i]}")
@@ -142,14 +168,16 @@ marian_predictions = results['marian']
 nllb_predictions = results['nllb']
 tower_predictions = results['tower']
 
+
+
 # BLEU
-bleu_marian = calculate_bleu(marian_predictions, [[ref] for ref in sample_english_sentences])
-bleu_nllb = calculate_bleu(nllb_predictions, [[ref] for ref in sample_english_sentences])
-bleu_tower = calculate_bleu(tower_predictions, [[ref] for ref in sample_english_sentences])
+bleu_marian = calculate_bleu(marian_predictions, sample_english_sentences)
+bleu_nllb = calculate_bleu(nllb_predictions, sample_english_sentences)
+bleu_tower = calculate_bleu(tower_predictions, sample_english_sentences)
 print("\nBLEU Scores:")
-print(f"- MarianMT: {bleu_marian['bleu']:.3f}")
-print(f"- NLLB:     {bleu_nllb['bleu']:.3f}")
-print(f"- Tower:    {bleu_tower['bleu']:.3f}")
+print(f"- MarianMT: {bleu_marian:.3f}")
+print(f"- NLLB:     {bleu_nllb:.3f}")
+print(f"- Tower:    {bleu_tower:.3f}")
 
 # BLEURT (average of scores)
 bleurt_marian = sum(calculate_bleurt(marian_predictions, sample_english_sentences)['scores'])/len(sample_english_sentences)
