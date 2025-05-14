@@ -20,6 +20,8 @@ source "$VENV_PATH/bin/activate"
 export CUDA_VISIBLE_DEVICES=0,1
 
 export HF_HOME=/scratch/$USER/huggingface_cache
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 
 
 # Run your script
