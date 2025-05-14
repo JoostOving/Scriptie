@@ -1,0 +1,10 @@
+transformers
+torch
+nltk
+tokenizers
+tqdm
+sentencepiece  
+sacremoses  
+tensorflow  
+comet-ml
+sacrebleu
