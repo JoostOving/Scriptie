@@ -1,0 +1,43 @@
+Dutch->English
+
+BLEU Scores:
+- MarianMT: 4.438
+- NLLB:     13.025
+- Tower:    15.104
+
+BLEURT Scores (average):
+- MarianMT: -1.000
+- NLLB:     0.000
+- Tower:    -0.110
+
+COMET Scores:
+- MarianMT: 0.424
+- NLLB:     0.696
+- Tower:    0.664
+
+CHRF Scores:
+- MarianMT: 42.914
+- NLLB:     40.073
+- Tower:    40.636
+
+English->Dutch
+
+BLEU Scores:
+- MarianMT: 3.427
+- NLLB:     0.171
+- Tower:    14.652
+
+BLEURT Scores (average):
+- MarianMT: -0.498
+- NLLB:     -1.023
+- Tower:    -0.304
+
+COMET Scores:
+- MarianMT: 0.556
+- NLLB:     0.334
+- Tower:    0.715
+
+CHRF Scores:
+- MarianMT: 43.336
+- NLLB:     7.136
+- Tower:    44.094

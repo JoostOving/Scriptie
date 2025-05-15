@@ -1,0 +1,112 @@
+DUTCH->ENGLISH
+1-shot
+
+BLEU Scores:
+- Tower:    17.846
+
+BLEURT Scores (average):
+- Tower:    0.067
+
+COMET Scores:
+- Tower:    0.735
+
+CHRF Scores:
+- Tower:    45.999
+
+
+
+3-Shot
+
+BLEU Scores:
+- Tower:    10.352
+
+BLEURT Scores (average):
+- Tower:    -0.303
+
+COMET Scores:
+- Tower:    0.568
+
+CHRF Scores:
+- Tower:    32.371
+
+
+
+
+5-shot
+
+BLEU Scores:
+- Tower:    18.438
+
+BLEURT Scores (average):
+- Tower:    0.137
+
+COMET Scores:
+- Tower:    0.740
+
+CHRF Scores:
+- Tower:    46.952
+
+
+Prompts:
+1-shot
+"Dutch: de commissie moet onwettige steun en steun die de interne markt daadwerkelijk dwarsboomt, zien te traceren."
+                "English: the commission must track down the illegal aid and the aid which actually hinders the internal market."
+3-shot
+                "Dutch: in de huidige situatie sta ik daarom sceptisch tegenover het idee van een europese openbare aanklager, "
+                "dat zeer waarschijnlijk niet kan worden uitgevoerd binnen het kader van de huidige verdragen."
+                "English: in the present situation, I am therefore sceptical about the idea of a European prosecutor, "
+                "which it is scarcely possible to implement within the framework of the present treaties."
+                "Dutch: de heer nielson kan hier vandaag niet aanwezig zijn omdat hij in Zuid-Afrika is."
+                "English: Mr. Nielson cannot be present today since he is in South Africa."
+5-shot
+                "Dutch:    hieruit volgt dat elk voorstel dat een ingrijpende hervorming van de toepassing van de concurrent ieregels beoogt , grondig moet worden getoetst ."
+                "English:  it therefore follows that any proposal which suggests major reform of the machinery for competition policy enforcement must be closely and carefully examined ."
+                "Dutch: mijnheer de voorzitter , beste collega ' s , met uw goed vinden wil ik kort het woord nemen om een tweetal punten te belichten die ons in dit verslag op vallen en die van essentieel strategisch belang zijn voor onze visie op de toekomst van de europese unie ."
+                "English: mr president , i would like to say a few words in order to highlight two points made in these reports which are of fundamental strategic importance to the way we see the union ."
+
+
+ENGELS->NEDERLANDS
+
+ 1-shot
+BLEU Scores:
+- Tower:    13.804
+
+BLEURT Scores (average):
+- Tower:    -0.333
+
+COMET Scores:
+- Tower:    0.722
+
+CHRF Scores:
+- Tower:    44.145
+
+
+
+3-shot
+
+BLEU Scores:
+- Tower:    12.853
+
+BLEURT Scores (average):
+- Tower:    -0.383
+
+COMET Scores:
+- Tower:    0.667
+
+CHRF Scores:
+- Tower:    40.296
+
+
+
+5-shot
+BLEU Scores:
+- Tower:    16.735
+
+BLEURT Scores (average):
+- Tower:    -0.184
+
+COMET Scores:
+- Tower:    0.756
+
+CHRF Scores:
+- Tower:    47.118
