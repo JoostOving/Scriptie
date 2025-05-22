@@ -9,8 +9,8 @@ We recommend the use of Habrok, or other powerful hardware to run the experiment
 https://github.com/JoostOving/Scriptie
 
 2. Create a virtual environment
-python -m venv venv
-source venv/bin/activate
+```python -m venv venv```
+```source venv/bin/activate```
 
 3. install requirements
 pip install -r requirements.txt
