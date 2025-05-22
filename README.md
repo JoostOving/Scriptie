@@ -13,10 +13,10 @@ https://github.com/JoostOving/Scriptie
 ```source venv/bin/activate```
 
 3. install requirements
-pip install -r requirements.txt
+```pip install -r requirements.txt```
 
 4. run the python scripts by executing the bash scripts
-bash preprocess-data.sh
-bash zero-shot.sh
-bash few-shot_tower.sh
+```bash preprocess-data.sh```
+```bash zero-shot.sh```
+```bash few-shot_tower.sh```
 
