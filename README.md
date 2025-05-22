@@ -6,17 +6,25 @@ We recommend the use of Habrok, or other powerful hardware to run the experiment
 ## Steps to replicate the experiment
 
 1. Clone the repository
-https://github.com/JoostOving/Scriptie
+```
+git clone https://github.com/JoostOving/Scriptie
+```
 
-2. Create a virtual environment
-```python -m venv venv```
-```source venv/bin/activate```
+3. Create a virtual environment
+```
+python -m venv venv
+source venv/bin/activate
+```
 
-3. install requirements
-```pip install -r requirements.txt```
+4. install requirements
+```
+pip install -r requirements.txt
+```
 
-4. run the python scripts by executing the bash scripts
-```bash preprocess-data.sh```
-```bash zero-shot.sh```
-```bash few-shot_tower.sh```
+6. run the python scripts by executing the bash scripts
+```
+bash preprocess-data.sh
+bash zero-shot.sh
+bash few-shot_tower.sh
+```
 
