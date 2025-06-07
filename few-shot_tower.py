@@ -10,27 +10,25 @@ import tensorflow as tf
 import gc 
 import re
 
-# Disable TF GPU usage
 tf.config.set_visible_devices([], 'GPU')
 
-# Download NLTK data
 nltk.download('punkt')
 
-# Load preprocessed data
+# load preprocessed data
 with open("preprocessed_dutch.txt", "r", encoding="utf-8") as f:
     dutch_sentences = f.read().splitlines()
 with open("preprocessed_english.txt", "r", encoding="utf-8") as f:
     english_sentences = f.read().splitlines()
 
-# Set device
+
 device = torch.device("cuda:0")
 
-# Load Tower model
+# Load TOWER
 tokenizer_tower = AutoTokenizer.from_pretrained("Unbabel/TowerInstruct-7B-v0.2")
 TOWER = AutoModelForCausalLM.from_pretrained("Unbabel/TowerInstruct-7B-v0.2")
 TOWER = TOWER.to(device)
 
-# Evaluation metrics
+# load evaluation metrics
 bleu = evaluate.load("sacrebleu")
 bleurt = load("bleurt", config_name="bleurt-tiny-128")
 comet = load("comet")
@@ -60,16 +58,15 @@ def calculate_comet(predictions, references, sources):
 
 def calculate_chrf(predictions, references):
     return chrf.compute(predictions=predictions, references=references)
-
-# 1-shot translation + evaluation
-sample_size = 5000  # Adjust this sample size as needed
+    
+sample_size = 5000  # adjust this size based on your dataset
 sample_dutch_sentences = dutch_sentences[:sample_size]
 sample_english_sentences = english_sentences[:sample_size]
 
 results = {"tower": []}
 
 with tqdm(total=len(sample_dutch_sentences), desc="5-shot Tower", unit="sentences", dynamic_ncols=True) as pbar:
-    for i in range(0, len(sample_dutch_sentences), 4):  # batch size = 4
+    for i in range(0, len(sample_dutch_sentences), 4):  # we use batch size 4 due to memory restraints
         batch = sample_dutch_sentences[i:i + 4]
 
         tower_prompts = []
@@ -91,28 +88,25 @@ with tqdm(total=len(sample_dutch_sentences), desc="5-shot Tower", unit="sentence
             )
             tower_prompts.append(prompt)
 
-        # Perform the translation using TOWER
+        # translate the sentences
         with torch.no_grad():
             tower_inputs = tokenizer_tower(tower_prompts, return_tensors="pt", padding=True, truncation=True, max_length=1024)
             tower_inputs = {k: v.to(device) for k, v in tower_inputs.items()}
             tower_outputs = TOWER.generate(**tower_inputs, max_new_tokens=70, pad_token_id=tokenizer_tower.eos_token_id)
             tower_decoded = tokenizer_tower.batch_decode(tower_outputs, skip_special_tokens=True)
             
-            # Clean the decoded output
             cleaned = clean_tower_output(tower_decoded, tower_prompts)
             results["tower"].extend(cleaned)
 
-            # Clean up memory
             del tower_inputs, tower_outputs, tower_decoded, tower_prompts
             torch.cuda.empty_cache()
 
-        # Update the progress bar
+        # progress bar for convenience
         pbar.update(len(batch))
 
-# --- Evaluation ---
 tower_predictions = results['tower']
 
-# Evaluate the results (use the same metrics calculation as before)
+# print the evaluation of the results
 print("\n--- Sample Translations ---")
 for i, sentence in enumerate(sample_dutch_sentences):
     print(f"\n?? Sentence {i+1}")
@@ -128,7 +122,7 @@ bleu_tower = calculate_bleu(tower_predictions, sample_english_sentences)
 print("\nBLEU Scores:")
 print(f"- Tower:    {bleu_tower:.3f}")
 
-# BLEURT (average of scores)
+# BLEURT 
 bleurt_tower = sum(calculate_bleurt(tower_predictions, sample_english_sentences)['scores']) / len(sample_english_sentences)
 print("\nBLEURT Scores (average):")
 print(f"- Tower:    {bleurt_tower:.3f}")
