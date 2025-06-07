@@ -27,4 +27,5 @@ bash preprocess-data.sh
 bash zero-shot.sh
 bash few-shot_tower.sh
 ```
+"""For english translation change the file name in the bash script to zero-shot-english.py"""
 
