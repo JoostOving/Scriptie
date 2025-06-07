@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 # First, we load in all the required libraries for running the code
 
