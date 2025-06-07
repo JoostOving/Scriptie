@@ -101,7 +101,7 @@ def perform_zero_shot(models, tokenizers, sentences, batch_size=16):
                 tokenizers["nllb"].src_lang = "eng_Latn"
                 nllb_inputs = tokenizers["nllb"](batch, return_tensors="pt", padding=True, truncation=True, max_length=512)
                 nllb_inputs = {k: v.to(device_0) for k, v in nllb_inputs.items()}
-                bos_token_id = tokenizers["nllb"].convert_tokens_to_ids(">>nld_Latn<<")
+                bos_token_id = tokenizers["nllb"].convert_tokens_to_ids("nld_Latn")
                 nllb_outputs = models["nllb"].generate(**nllb_inputs, forced_bos_token_id=bos_token_id)
                 results["nllb"].extend(tokenizers["nllb"].batch_decode(nllb_outputs, skip_special_tokens=True))
 
