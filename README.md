@@ -23,6 +23,7 @@ pip install -r requirements.txt
 
 4. run the python scripts by executing the bash scripts
 ```
+# when coming across a dos/unix bash script error run "dos2unix zero-shot.sh"
 bash preprocess-data.sh
 bash zero-shot.sh
 bash few-shot_tower.sh
