@@ -1,3 +1,4 @@
+"""No longer used, was used for the base of the program"
 #!/bin/bash
 #SBATCH --job-name=run_models
 #SBATCH --output=zero_shot_output.log
