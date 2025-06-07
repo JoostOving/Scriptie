@@ -136,7 +136,7 @@ results = perform_zero_shot(models, tokenizers, sample_english_sentences)
 print("\n--- Sample Translations ---")
 for i, sentence in enumerate(sample_english_sentences):
     print(f"\n?? Sentence {i+1}")
-    print(f"?? Dutch:    {sentence}")
+    print(f"?? English:    {sentence}")
     print(f"?? Reference:  {sample_dutch_sentences[i]}")
     print(f"?? Marian:   {results['marian'][i]}")
     print(f"?? NLLB:     {results['nllb'][i]}")
