@@ -24,20 +24,20 @@ English->Dutch
 
 BLEU Scores:
 - MarianMT: 3.427
-- NLLB:     0.171
+- NLLB:     14.974
 - Tower:    14.652
 
 BLEURT Scores (average):
 - MarianMT: -0.498
-- NLLB:     -1.023
+- NLLB:     -0.213
 - Tower:    -0.304
 
 COMET Scores:
 - MarianMT: 0.556
-- NLLB:     0.334
+- NLLB:     0.756
 - Tower:    0.715
 
 CHRF Scores:
 - MarianMT: 43.336
-- NLLB:     7.136
+- NLLB:     47.402
 - Tower:    44.094
