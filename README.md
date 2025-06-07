@@ -1,6 +1,6 @@
 # Scriptie
 This GitHub repository contains the code I wrote for my thesis in the last semester of my third year Information Science in 2025. The code runs three different NMT models: TOWER, MarianMT, and Facebook-NLLB-200 on a paralell Dutch-English corpus from the Europarl dataset.
-The preprocess_data.py preprocesses the parallel corpus. The zero-shot.py and few-shot_tower.py functions are used for running the models on the corpus and returning results in the format of automatic evaluation metrics. 
+The preprocess_data.py preprocesses the parallel corpus. The zero-shot.py and few-shot_tower.py functions are used for running the models on the corpus Dutch->English and returning results in the format of automatic evaluation metrics. The opposite file zero-shot-english.py returns the results for the English->Dutch translation.
 We recommend the use of Habrok, or other powerful hardware to run the experiment. The code requires a GPU to run efficiently, so it is recommended to use one.
 
 ## Steps to replicate the experiment
