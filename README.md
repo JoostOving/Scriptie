@@ -10,18 +10,18 @@ We recommend the use of Habrok, or other powerful hardware to run the experiment
 git clone https://github.com/JoostOving/Scriptie
 ```
 
-3. Create a virtual environment
+2. Create a virtual environment
 ```
 python -m venv venv
 source venv/bin/activate
 ```
 
-4. install requirements
+3. install requirements
 ```
 pip install -r requirements.txt
 ```
 
-6. run the python scripts by executing the bash scripts
+4. run the python scripts by executing the bash scripts
 ```
 bash preprocess-data.sh
 bash zero-shot.sh
