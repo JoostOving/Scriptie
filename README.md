@@ -29,3 +29,24 @@ bash few-shot_tower.sh
 ```
 """For english translation change the file name in the bash script to zero-shot-english.py"""
 
+# Results
+## Dutch -> English
+| System                    | COMET | BLEURT | chrF   | BLEU   |
+| ------------------------- | ----- | ------ | ------ | ------ |
+| MarianMT (Zero-Shot)      | 0.424 | -1.000 | 42.914 | 4.438  |
+| Facebook-NLLB (Zero-Shot) | 0.696 | 0.000  | 40.073 | 13.025 |
+| TOWER (Zero-Shot)         | 0.664 | -0.110 | 40.636 | 15.104 |
+| TOWER (One-Shot)          | 0.735 | 0.067  | 45.999 | 17.846 |
+| TOWER (Three-Shot)        | 0.568 | -0.303 | 32.371 | 10.352 |
+| TOWER (Five-Shot)         | 0.740 | 0.137  | 46.952 | 18.438 |
+
+## English -> Dutch
+| System                     | COMET | BLEURT | chrF   | BLEU   |
+|---------------------------|-------|--------|--------|--------|
+| MarianMT (Zero-Shot)      | 0.556 | -0.498 | 43.336 | 3.427  |
+| Facebook-NLLB (Zero-Shot) | 0.334 | -1.023 | 7.136  | 0.171  |
+| TOWER (Zero-Shot)         | 0.715 | -0.304 | 44.094 | 14.652 |
+| TOWER (One-Shot)          | 0.722 | -0.333 | 44.145 | 13.804 |
+| TOWER (Three-Shot)        | 0.667 | -0.383 | 40.296 | 12.853 |
+| TOWER (Five-Shot)         | 0.756 | -0.184 | 47.118 | 16.735 |
+
